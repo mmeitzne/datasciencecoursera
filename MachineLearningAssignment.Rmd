@@ -1,0 +1,78 @@
+---
+title: "FitnessActivity Prediciton Assignment"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Machine Learning Prediction  
+
+Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+```{r}
+library(RCurl)
+train<- read.csv("pml-training.csv")
+test<- read.csv("pml-testing.csv")
+
+
+
+```
+## Data Exploration
+
+Taking a look at the two data files, cleaning up na's, etc.
+```{r}
+
+train <- train[, colSums(is.na(train)) == 0] 
+test <- test[, colSums(is.na(test)) == 0] 
+classe <- train$classe
+trainR <- grepl("^X|timestamp|window", names(train))
+train <- train[, !trainR]
+trainM <- train[, sapply(train, is.numeric)]
+trainM$classe <- classe
+testR <- grepl("^X|timestamp|window", names(test))
+test<- test[, !testR]
+testM <- test[, sapply(test, is.numeric)]
+
+
+```
+
+## Data Partitioning
+Partition the trainM data created in the previous step into training and test
+```{r}
+library(caret)
+set.seed(12345) 
+inTrain <- createDataPartition(trainM$classe, p=0.75, list=F)
+train_data <- trainM[inTrain, ]
+test_data <- trainM[-inTrain, ]
+
+```
+
+## Prediction Model
+
+Using RandomForest method, and choosing 5 fold for cross validation, predictions are made for the dataset to classify into the manner of exercise.
+```{r}
+
+setting <- trainControl(method="cv", 5)
+RandomForest <- train(classe ~ ., data=train_data, method="rf", trControl=setting, ntree=250)
+RandomForest
+
+predict_RandomForest <- predict(RandomForest, test_data)
+
+
+confusionMatrix(test_data$classe, predict_RandomForest)
+
+accuracy <- postResample(predict_RandomForest, test_data$classe)
+
+error<-1 - as.numeric(confusionMatrix(test_data$classe, predict_RandomForest)$overall[1])
+
+predict_RandomForest_test <- predict(RandomForest, testM)
+predict_RandomForest_test
+
+```
+
+
